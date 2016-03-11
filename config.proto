@@ -1,0 +1,7 @@
+syntax = "proto2";
+package main;
+
+message Config {
+    required string User = 1;
+    required string AppName = 2;
+};
