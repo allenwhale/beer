@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/golang/protobuf/proto"
 	_ "io/ioutil"
 	"os"
+
+	_ "github.com/golang/protobuf/proto"
 )
 
 const (
@@ -20,7 +21,7 @@ func main() {
     router.Use(gin.Logger())
     router.Use(gin.Recovery())
     router.GET("/", func(c *gin.Context) {
-        c.String("index")
+        c.String("Hello, go get beer")
     })
     router.Run(":8080")
     return
@@ -71,9 +72,7 @@ func main() {
 	if err != nil {
 		config := NewConfig()
 		WriteConfig(config, ".beer.config")
-		fmt.Println(config.GetUser(), config.GetAppName())
-	} else {
-		fmt.Println(config.GetUser(), config.GetAppName())
 	}
+	fmt.Println(config.GetUser(), config.GetAppName())
 
 }
