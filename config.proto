@@ -4,6 +4,4 @@ package main;
 message Config {
     required string User = 1;
     required string AppName = 2;
-    required string Port = 3;
-    required string Mode = 4;
 };
