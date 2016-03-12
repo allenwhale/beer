@@ -9,23 +9,35 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func FindBaseDir() (string, error) {
+func RecoverPanic() {
+	err := recover()
+	fmt.Println(err)
+}
+
+func Check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func FindBaseDir() string {
 	base := "."
 	for ; ; base += "/.." {
 		files, err := ioutil.ReadDir(base)
-		if err != nil {
-			return "", err
-		}
+		Check(err)
 		for _, file := range files {
 			if file.Name() == ".beer.config" {
-				return filepath.Abs(base)
+				base, err = filepath.Abs(base)
+				Check(err)
+				return base
 			}
 		}
 		if p, _ := filepath.Abs(base); p == "/" {
-			return "", errors.New(".beer.config Not found")
+			Check(errors.New(".beer.config Not found"))
 		}
 	}
-	return "", nil
+	Check(errors.New("Something error"))
+	return ""
 }
 
 func NewConfig(appName string) *Config {
@@ -41,24 +53,21 @@ func NewConfig(appName string) *Config {
 	return config
 }
 
-func ReadConfig(configPath string) (*Config, error) {
+func ReadConfig(configPath string) *Config {
 	in, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return nil, err
-	}
+	Check(err)
 	config := &Config{}
-	if err := proto.Unmarshal(in, config); err != nil {
-		return nil, err
-	}
-	return config, nil
+	err = proto.Unmarshal(in, config)
+	Check(err)
+	return config
 }
-func WriteConfig(config *Config, filePath string) error {
+func WriteConfig(config *Config, filePath string) {
 	out, err := proto.Marshal(config)
-	if err != nil {
-		return nil
-	}
-	if err := ioutil.WriteFile(filePath, out, 0644); err != nil {
-		return err
-	}
-	return nil
+	Check(err)
+	err = ioutil.WriteFile(filePath, out, 0644)
+	Check(err)
+}
+func WriteStringToFile(filePath string, content string) {
+	err := ioutil.WriteFile(filePath, []byte(content), 0644)
+	Check(err)
 }
