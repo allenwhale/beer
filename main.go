@@ -5,6 +5,7 @@ import (
 	_ "io/ioutil"
 	"os"
 
+	"github.com/fatih/color"
 	_ "github.com/golang/protobuf/proto"
 )
 
@@ -50,7 +51,7 @@ func NewApp(config *Config) error {
 }
 
 func main() {
-	fmt.Printf(mainFileContent)
+
 	Args := os.Args
 	if len(Args) <= 1 {
 		Usage()
@@ -61,18 +62,27 @@ func main() {
 		Usage()
 		return
 	} else if command == "new" {
-		config := NewConfig()
+
+		if len(Args) <= 2 {
+			red := color.New(color.FgRed).SprintFunc()
+			fmt.Println(red("error:  ") + "Usage: beer new [something]")
+			return
+		}
+		config := NewConfig(Args[2])
 		err := NewApp(config)
 		if err != nil {
 			fmt.Println(err)
 		}
 		return
-	}
-	config, err := ReadConfig(".beer.config")
-	if err != nil {
-		config := NewConfig()
-		WriteConfig(config, ".beer.config")
-	}
-	fmt.Println(config.GetUser(), config.GetAppName())
+	} else if command == "generate" {
 
+		if len(Args) <= 2 {
+			red := color.New(color.FgRed).SprintFunc()
+			fmt.Println(red("error:  ") + "Usage: beer generate [something]")
+			return
+		}
+		apiName := Args[2]
+		fmt.Println(apiName)
+		return
+	}
 }

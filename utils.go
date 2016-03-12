@@ -3,9 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"path/filepath"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func FindBaseDir() (string, error) {
@@ -27,12 +28,12 @@ func FindBaseDir() (string, error) {
 	return "", nil
 }
 
-func NewConfig() *Config {
-	var user, appName string
+func NewConfig(appName string) *Config {
+	var user string
 	fmt.Printf("User: ")
 	fmt.Scanf("%s", &user)
-	fmt.Printf("AppName: ")
-	fmt.Scanf("%s", &appName)
+	// fmt.Printf("AppName: ")
+	// fmt.Scanf("%s", &appName)
 	config := &Config{
 		User:    proto.String(user),
 		AppName: proto.String(appName),
