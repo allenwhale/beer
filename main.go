@@ -17,6 +17,8 @@ import (
     "github.com/gin-gonic/gin"
 )
 
+
+
 func main() {
     router := gin.New()
     router.Use(gin.Logger())
@@ -24,6 +26,7 @@ func main() {
     router.GET("/", func(c *gin.Context) {
         c.String("Hello, go get beer")
     })
+
     router.Run(":8080")
     return
 }
