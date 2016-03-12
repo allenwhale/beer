@@ -1,14 +1,16 @@
 package main
 
 import (
-	"bytes"
+	_ "bytes"
 	"fmt"
 	_ "io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
+	"regexp"
+	_ "strings"
 
 	"github.com/fatih/color"
+	"github.com/golang/protobuf/proto"
 )
 
 const (
@@ -19,8 +21,8 @@ import (
     "github.com/gin-gonic/gin"
     _ "net/http"
     "%s/test/handler"
-    "%s/test/middleware"
-    "%s/test/model"
+    _ "%s/test/middleware"
+    _ "%s/test/model"
 )
 
 func main() {
@@ -57,10 +59,17 @@ package model
 package middlerware
 `
 	templateIndexFileContent = `
+{{ define "index.html" }}
 <h1>Hello {{ .name }}</h1>
+{{ end }}
 `
 	handlerNewFileContent = `
 package handler
+
+import (
+    "github.com/gin-gonic/gin"
+    "net/http"
+)
 
 func %sGET(c *gin.Context) {
 }
@@ -82,10 +91,12 @@ package model
 package middleware
 `
 	templateNewFileContent = `
+{{ define "%s" }}
+{{ end }}
 `
 )
 
-var projectBaseDir = FindBaseDir() + "/"
+var projectBaseDir string
 
 func NewApp(config *Config) {
 	baseDir := config.GetAppName() + "/src/" + config.GetUser() + "/" + config.GetAppName()
@@ -108,25 +119,21 @@ func NewApp(config *Config) {
 	WriteStringToFile(baseDir+"/model/main.go", modelMainFileContent)
 	WriteStringToFile(baseDir+"/template/index.html", templateIndexFileContent)
 	fmt.Println("Run:")
-	fmt.Printf("cd %s", config.GetAppName())
+	fmt.Printf("cd %s\n", config.GetAppName())
 	fmt.Println("export GOPATH=`pwd`")
 }
 
 func generate(config *Config, apiName string) {
-	apiUrl := strings.Split(apiName, "/")
-	apiName = ""
-	for _, url := range apiUrl {
-		apiName += strings.ToUpper(url[0:1]) + url[1:]
+	r, _ := regexp.Compile(`(\w+)`)
+	if r.FindString(apiName) != apiName {
+		panic(fmt.Sprintf("\"%s\" is not allow", apiName))
 	}
 	newHandlerFilename := projectBaseDir + "/src/" + config.GetUser() + "/" + config.GetAppName() + "/handler/" + apiName + ".go"
 	newModelFilename := projectBaseDir + "/src/" + config.GetUser() + "/" + config.GetAppName() + "/model/" + apiName + ".go"
-	newTemplateDir := projectBaseDir + "/src/" + config.GetUser() + "/" + config.GetAppName() + "/template/" + apiName + "/"
-	newTemplateFilename := newTemplateDir + "index.html"
-	err := os.MkdirAll(newTemplateDir, 0755)
-	Check(err)
+	newTemplateFilename := projectBaseDir + "/src/" + config.GetUser() + config.GetAppName() + "/" + apiName + ".html"
 	WriteStringToFile(newHandlerFilename, fmt.Sprintf(handlerNewFileContent, apiName, apiName, apiName, apiName, apiName, apiName))
 	WriteStringToFile(newModelFilename, modelNewFileContent)
-	WriteStringToFile(newTemplateFilename, templateNewFileContent)
+	WriteStringToFile(newTemplateFilename, fmt.Sprintf(templateNewFileContent, apiName+".html"))
 }
 
 func middlerware(config *Config, middlerwareName string) {
@@ -134,18 +141,68 @@ func middlerware(config *Config, middlerwareName string) {
 	WriteStringToFile(newMiddlerwareFilename, middlewareNewFileContent)
 }
 
+func listDeps(config *Config) {
+	deps := config.GetDeps()
+	for _, dep := range deps {
+		fmt.Println(dep.GetPkg())
+	}
+}
+
+func addDeps(config *Config, pkg string) {
+	deps := config.GetDeps()
+	for _, dep := range deps {
+		if dep.GetPkg() == pkg {
+			panic(fmt.Sprintf("pkg: \"%s\" exists", pkg))
+		}
+	}
+	fmt.Printf("Add pkg: \"%s\"\n", pkg)
+	config.Deps = append(deps, &Dependency{
+		Pkg: proto.String(pkg),
+	})
+	fmt.Println(config.Deps)
+	WriteConfig(config, projectBaseDir+"/.beer.config")
+}
+
+func delDeps(config *Config, pkg string) {
+	deps := config.GetDeps()
+	for i, dep := range deps {
+		if dep.GetPkg() == pkg {
+			fmt.Printf("Delete pkg: \"%s\"\n", pkg)
+			deps = append(deps[:i], deps[i+1:]...)
+			config.Deps = deps
+			WriteConfig(config, projectBaseDir+"/.beer.config")
+			return
+		}
+	}
+	panic(fmt.Sprintf("pkg: \"%s\" isn't in deps list", pkg))
+}
+
+func getDeps(config *Config) {
+	deps := config.GetDeps()
+	for _, dep := range deps {
+		fmt.Printf("Installing pkg \"%s\"\n", dep.GetPkg())
+		exec.Command("go", "get", dep.GetPkg()).Run()
+	}
+}
+
 func buildApp(config *Config) {
-	fmt.Println(os.Getenv("GOPATH"))
-	var out bytes.Buffer
-	cmd := exec.Command("go", "build", fmt.Sprintf("%s/%s/handler", config.GetUser(), config.GetAppName()))
-	cmd.Run()
+	fmt.Println("Building handler")
+	exec.Command("go", "build", fmt.Sprintf("%s/%s/handler", config.GetUser(), config.GetAppName())).Run()
+	fmt.Println("Building middleware")
 	exec.Command("go", "build", fmt.Sprintf("%s/%s/middleware", config.GetUser(), config.GetAppName())).Run()
+	fmt.Println("Building model")
 	exec.Command("go", "build", fmt.Sprintf("%s/%s/model", config.GetUser(), config.GetAppName())).Run()
-	cmd = exec.Command("go", "-o", "main.out", "build", fmt.Sprintf("%s/%s/main", config.GetUser(), config.GetAppName()))
-	cmd.Stdout = &out
-	err := cmd.Run()
-	fmt.Println(err)
-	fmt.Printf("in all caps: %q\n", out.String())
+	fmt.Println("Building main")
+	exec.Command("go", "build", "-o", fmt.Sprintf("%s/src/%s/%s/main.out", projectBaseDir, config.GetUser(), config.GetAppName()), fmt.Sprintf("%s/%s/main", config.GetUser(), config.GetAppName())).Run()
+}
+
+func runApp(config *Config, mode string) {
+	os.Setenv("GIN_MODE", mode)
+	os.Chdir(projectBaseDir + "/src/" + config.GetUser() + "/" + config.GetAppName())
+	cmd := exec.Command("./main.out")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
 }
 
 func main() {
@@ -168,32 +225,59 @@ func main() {
 		config := NewConfig(Args[2])
 		NewApp(config)
 		return
-	} else if command == "generate" {
+	}
+	projectBaseDir = FindBaseDir() + "/"
+	os.Setenv("GOPATH", projectBaseDir)
+	config := ReadConfig(projectBaseDir + ".beer.config")
+	if command == "generate" {
 		if len(Args) <= 2 {
 			red := color.New(color.FgRed).SprintFunc()
-			fmt.Println(red("error:  ") + "Usage: beer generate [something]")
-			return
+			panic(red("error:  ") + "Usage: beer generate [something]")
 		}
 		apiName := Args[2]
-		config := ReadConfig(projectBaseDir + ".beer.config")
 		generate(config, apiName)
 		return
 	} else if command == "middleware" {
 		if len(Args) <= 2 {
 			red := color.New(color.FgRed).SprintFunc()
-			fmt.Println(red("error:  ") + "Usage: beer middleware [something]")
+			panic(red("error:  ") + "Usage: beer middleware [something]")
 			return
 		}
 		middlerwareName := Args[2]
-		config := ReadConfig(projectBaseDir + ".beer.config")
 		middlerware(config, middlerwareName)
 	} else if command == "run" {
 		mode := "debug"
 		if len(Args) > 2 {
-			mode = Args[3]
+			mode = Args[2]
 		}
-		fmt.Println("Run in mode: ", mode)
-		config := ReadConfig(projectBaseDir + "/.beer.config")
+		fmt.Println("Run in mode:", mode)
+		getDeps(config)
 		buildApp(config)
+		runApp(config, mode)
+	} else if command == "deps" {
+		if len(Args) <= 2 {
+			red := color.New(color.FgRed).SprintFunc()
+			panic(red("error:  ") + "Usage: beer deps [something]")
+		}
+		depsCmd := Args[2]
+		if depsCmd == "list" {
+			listDeps(config)
+		} else if depsCmd == "add" {
+			if len(Args) <= 3 {
+				red := color.New(color.FgRed).SprintFunc()
+				panic(red("error:  ") + "Usage: beer deps add [something]")
+			}
+			pkg := Args[3]
+			addDeps(config, pkg)
+		} else if depsCmd == "del" {
+			if len(Args) <= 3 {
+				red := color.New(color.FgRed).SprintFunc()
+				panic(red("error:  ") + "Usage: beer deps add [something]")
+			}
+			pkg := Args[3]
+			delDeps(config, pkg)
+		} else if depsCmd == "get" {
+			getDeps(config)
+		}
 	}
 }

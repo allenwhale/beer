@@ -11,7 +11,9 @@ import (
 
 func RecoverPanic() {
 	err := recover()
-	fmt.Println(err)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func Check(err error) {
@@ -49,6 +51,11 @@ func NewConfig(appName string) *Config {
 	config := &Config{
 		User:    proto.String(user),
 		AppName: proto.String(appName),
+		Deps: []*Dependency{
+			&Dependency{
+				Pkg: proto.String("github.com/gin-gonic/gin"),
+			},
+		},
 	}
 	return config
 }
