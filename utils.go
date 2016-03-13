@@ -17,7 +17,6 @@ func RecoverPanic() {
 		yellow := color.New(color.FgYellow).SprintFunc()
 		fmt.Println(red("error:  ") + yellow(err))
 	}
-
 }
 
 func Check(err error) {
@@ -53,6 +52,11 @@ func NewConfig(appName string) *Config {
 	config := &Config{
 		User:    proto.String(user),
 		AppName: proto.String(appName),
+		Deps: []*Dependency{
+			&Dependency{
+				Pkg: proto.String("github.com/gin-gonic/gin"),
+			},
+		},
 	}
 	return config
 }

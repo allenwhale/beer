@@ -1,7 +1,12 @@
 syntax = "proto2";
 package main;
 
+message Dependency {
+    required string pkg = 1; 
+}
+
 message Config {
-    required string User = 1;
-    required string AppName = 2;
+    required string User = 1 [default = "user"];
+    required string AppName = 2 [default = "app"];
+    repeated Dependency deps = 3;
 };
