@@ -22,6 +22,8 @@ const (
 
     new
     generate
+    middleware
+    run
     help
 	`
 )

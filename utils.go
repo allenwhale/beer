@@ -6,12 +6,18 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/fatih/color"
 	"github.com/golang/protobuf/proto"
 )
 
 func RecoverPanic() {
 	err := recover()
-	fmt.Println(err)
+	if err != nil {
+		red := color.New(color.FgRed).SprintFunc()
+		yellow := color.New(color.FgYellow).SprintFunc()
+		fmt.Println(red("error:  ") + yellow(err))
+	}
+
 }
 
 func Check(err error) {
@@ -42,10 +48,8 @@ func FindBaseDir() string {
 
 func NewConfig(appName string) *Config {
 	var user string
-	fmt.Printf("User: ")
+	fmt.Printf("Username: ")
 	fmt.Scanf("%s", &user)
-	// fmt.Printf("AppName: ")
-	// fmt.Scanf("%s", &appName)
 	config := &Config{
 		User:    proto.String(user),
 		AppName: proto.String(appName),

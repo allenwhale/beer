@@ -27,7 +27,7 @@ func main() {
     router := gin.New()
     router.Use(gin.Logger())
     router.Use(gin.Recovery())
-    
+
     router.LoadHTMLGlob("template/**/*")
     router.Static("/static", "./static")
     router.GET("/", handler.IndexGET)
@@ -62,6 +62,7 @@ package middlerware
 	handlerNewFileContent = `
 package handler
 
+
 func %sGET(c *gin.Context) {
 }
 func %sPOST(c *gin.Context) {
@@ -85,9 +86,10 @@ package middleware
 `
 )
 
-var projectBaseDir = FindBaseDir() + "/"
+var projectBaseDir string
 
 func NewApp(config *Config) {
+
 	baseDir := config.GetAppName() + "/src/" + config.GetUser() + "/" + config.GetAppName()
 	mainFolder := baseDir + "/main/"
 	handlerFolder := baseDir + "/handler/"
@@ -108,7 +110,7 @@ func NewApp(config *Config) {
 	WriteStringToFile(baseDir+"/model/main.go", modelMainFileContent)
 	WriteStringToFile(baseDir+"/template/index.html", templateIndexFileContent)
 	fmt.Println("Run:")
-	fmt.Printf("cd %s", config.GetAppName())
+	fmt.Printf("cd %s\n", config.GetAppName())
 	fmt.Println("export GOPATH=`pwd`")
 }
 
@@ -162,16 +164,37 @@ func main() {
 	} else if command == "new" {
 		if len(Args) <= 2 {
 			red := color.New(color.FgRed).SprintFunc()
-			fmt.Println(red("error:  ") + "Usage: beer new [something]")
+			yellow := color.New(color.FgYellow).SprintFunc()
+			fmt.Println(red("error:  ") + yellow("Usage: beer new [something]"))
 			return
 		}
+
+		if _, err := os.Stat(Args[2]); err == nil {
+			red := color.New(color.FgRed).SprintFunc()
+			yellow := color.New(color.FgYellow).SprintFunc()
+			fmt.Printf(red("error: ") + yellow(Args[2]+" already exists! Override? (y/n) [n]: "))
+			var opt string
+			fmt.Scanf("%s", &opt)
+			if opt != "y" {
+				return
+			}
+			exec.Command("rm", "-rf", Args[2]).Run()
+		}
+
 		config := NewConfig(Args[2])
 		NewApp(config)
+		green := color.New(color.FgGreen).SprintFunc()
+		yellow := color.New(color.FgYellow).SprintFunc()
+		fmt.Println(green("Your beer is ready at ") + yellow(config.GetAppName()+"/src/"+config.GetUser()))
 		return
-	} else if command == "generate" {
+	}
+	projectBaseDir = FindBaseDir() + "/"
+
+	if command == "generate" {
 		if len(Args) <= 2 {
 			red := color.New(color.FgRed).SprintFunc()
-			fmt.Println(red("error:  ") + "Usage: beer generate [something]")
+			yellow := color.New(color.FgYellow).SprintFunc()
+			fmt.Println(red("error:  ") + yellow("Usage: beer generate [something]"))
 			return
 		}
 		apiName := Args[2]
@@ -181,7 +204,8 @@ func main() {
 	} else if command == "middleware" {
 		if len(Args) <= 2 {
 			red := color.New(color.FgRed).SprintFunc()
-			fmt.Println(red("error:  ") + "Usage: beer middleware [something]")
+			yellow := color.New(color.FgYellow).SprintFunc()
+			fmt.Println(red("error:  ") + yellow("Usage: beer middleware [something]"))
 			return
 		}
 		middlerwareName := Args[2]
@@ -193,7 +217,7 @@ func main() {
 			mode = Args[3]
 		}
 		fmt.Println("Run in mode: ", mode)
-		config := ReadConfig(projectBaseDir + "/.beer.config")
+		config := ReadConfig(projectBaseDir + ".beer.config")
 		buildApp(config)
 	}
 }
