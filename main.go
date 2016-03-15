@@ -283,6 +283,7 @@ func main() {
 			red := color.New(color.FgRed).SprintFunc()
 			panic(red("error:  ") + "Usage: beer deps [something]")
 		}
+
 		depsCmd := Args[2]
 		if depsCmd == "list" {
 			listDeps(config)

@@ -4,3 +4,4 @@ go get github.com/gin-gonic/gin
 go get github.com/golang/protobuf/protoc-gen-go
 go get github.com/golang/protobuf/proto
 go get github.com/fatih/color
+go get github.com/howeyc/fsnotify 
